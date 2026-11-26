@@ -1,0 +1,95 @@
+name: CI/CD Inventario ERP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-report:
+    name: Pruebas Automatizadas (>=600) y Reporte a OpenObserve
+    runs-on: ubuntu-latest
+    env:
+      OTEL_ENABLED: "false"
+      DATABASE_URL: "sqlite:///./test_ci.db"
+      JWT_SECRET_KEY: "ci-test-secret-key-at-least-32-bytes"
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias y Playwright Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          playwright install chromium --with-deps
+
+      - name: Ejecutar suite de pruebas (>=600 tests)
+        id: pytest
+        run: |
+          pytest -v --junitxml=report.xml
+
+      - name: Reportar resultado de CI a OpenObserve (cicd_pipelines)
+        if: always()
+        env:
+          OPENOBSERVE_URL: ${{ secrets.OPENOBSERVE_URL }}
+          OPENOBSERVE_AUTH_HEADER: ${{ secrets.OPENOBSERVE_AUTH_HEADER }}
+          CI_JOB_STATUS: ${{ job.status }}
+        run: |
+          python scripts/report_ci_to_openobserve.py --xml report.xml --status "${CI_JOB_STATUS}"
+
+      - name: Subir reporte JUnit como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: report.xml
+
+  deploy-ec2:
+    name: Despliegue en AWS EC2
+    needs: test-and-report
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Desplegar vía SSH en EC2 y verificar healthcheck
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.EC2_APP_DIR || '~/inventario-erp' }}
+            git pull origin main
+            docker compose up -d --build
+            for i in $(seq 1 15); do
+              if curl -sf http://localhost:8000/health; then
+                echo "Healthcheck OK"
+                break
+              fi
+              sleep 2
+            done
+            curl -sf http://localhost:8000/health
+
+      - name: Notificar despliegue exitoso a OpenObserve (cicd_deployments)
+        if: success()
+        env:
+          OPENOBSERVE_URL: ${{ secrets.OPENOBSERVE_URL }}
+          OPENOBSERVE_AUTH_HEADER: ${{ secrets.OPENOBSERVE_AUTH_HEADER }}
+        run: |
+          if [ -n "$OPENOBSERVE_URL" ]; then
+            TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            curl -sf -X POST "${OPENOBSERVE_URL%/}/api/default/cicd_deployments/_json" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: ${OPENOBSERVE_AUTH_HEADER}" \
+              -d "[{\"timestamp\":\"${TIMESTAMP}\",\"service\":\"inventario-erp\",\"status\":\"deployed\",\"commit_sha\":\"${GITHUB_SHA}\",\"branch\":\"${GITHUB_REF_NAME}\",\"actor\":\"${GITHUB_ACTOR}\",\"host\":\"${{ secrets.EC2_HOST }}\"}]"
+          else
+            echo "OPENOBSERVE_URL no configurado; omitiendo notificación de despliegue."
+          fi

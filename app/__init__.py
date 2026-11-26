@@ -1,0 +1,1 @@
+"""Inventario ERP - Aplicación principal."""

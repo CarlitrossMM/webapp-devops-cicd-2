@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventario ERP — Gestión de Inventario y Órdenes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+  <!-- ==================== VISTA DE AUTENTICACIÓN ==================== -->
+  <main id="auth-section" data-testid="auth-section" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8">
+      <div class="text-center mb-6">
+        <span class="inline-block px-3 py-1 text-xs font-semibold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 rounded-full mb-2">
+          Mini-ERP Observabilidad
+        </span>
+        <h1 class="text-2xl font-bold text-white">Inventario &amp; Órdenes</h1>
+        <p class="text-slate-400 text-sm mt-1">Accede para gestionar productos y movimientos</p>
+      </div>
+
+      <div class="flex border-b border-slate-800 mb-6">
+        <button id="tab-login" data-testid="tab-login" type="button"
+          class="flex-1 py-2.5 text-sm font-medium border-b-2 border-indigo-500 text-indigo-400">
+          Iniciar Sesión
+        </button>
+        <button id="tab-register" data-testid="tab-register" type="button"
+          class="flex-1 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+          Registrarse
+        </button>
+      </div>
+
+      <div id="auth-error" data-testid="auth-error"
+        class="hidden mb-4 p-3 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-sm"></div>
+      <div id="auth-success" data-testid="auth-success"
+        class="hidden mb-4 p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-sm"></div>
+
+      <!-- Formulario Login -->
+      <form id="login-form" data-testid="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Usuario o Correo</label>
+          <input id="login-username" data-testid="login-username" type="text" required
+            placeholder="admin_erp"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Contraseña</label>
+          <input id="login-password" data-testid="login-password" type="password" required
+            placeholder="••••••••"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <button data-testid="login-submit" type="submit"
+          class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition">
+          Entrar al Sistema
+        </button>
+      </form>
+
+      <!-- Formulario Registro -->
+      <form id="register-form" data-testid="register-form" class="space-y-4 hidden">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Usuario</label>
+          <input id="register-username" data-testid="register-username" type="text" required
+            placeholder="operador_01"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Correo electrónico</label>
+          <input id="register-email" data-testid="register-email" type="email" required
+            placeholder="operador@empresa.com"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Contraseña segura</label>
+          <input id="register-password" data-testid="register-password" type="password" required
+            placeholder="Mín. 8 chars, Mayús, Minús, Número y Símbolo"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Rol</label>
+          <select id="register-role" data-testid="register-role"
+            class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="operador">Operador</option>
+            <option value="admin">Admin</option>
+            <option value="auditor">Auditor</option>
+          </select>
+        </div>
+        <button data-testid="register-submit" type="submit"
+          class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition">
+          Crear Cuenta
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ==================== DASHBOARD PRINCIPAL ==================== -->
+  <div id="dashboard-section" data-testid="dashboard-section" class="hidden min-h-screen flex flex-col">
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">ERP</div>
+        <div>
+          <h1 class="text-lg font-bold text-white leading-tight">Inventario ERP</h1>
+          <p class="text-xs text-slate-400">OpenTelemetry + OpenObserve</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span id="low-stock-badge" data-testid="low-stock-badge"
+          class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+          Alertas Stock Bajo: 0
+        </span>
+        <span id="user-badge" data-testid="user-badge"
+          class="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-200 border border-slate-700">
+          Usuario
+        </span>
+        <button id="logout-btn" data-testid="logout-btn" type="button"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 border border-rose-500/30">
+          Cerrar Sesión
+        </button>
+      </div>
+    </header>
+
+    <div class="max-w-7xl w-full mx-auto p-6 space-y-6 flex-1">
+      <div id="dashboard-alert" data-testid="dashboard-alert"
+        class="hidden p-3.5 rounded-lg border text-sm font-medium"></div>
+
+      <!-- Barra de Filtros y Acciones -->
+      <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold text-white">Catálogo de Productos</h2>
+          <div class="flex gap-2">
+            <button id="open-create-product-btn" data-testid="open-create-product-btn" type="button"
+              class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold">
+              + Nuevo Producto
+            </button>
+            <button id="open-order-modal-btn" data-testid="open-order-modal-btn" type="button"
+              class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold">
+              Registrar Movimiento
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+          <div class="md:col-span-2">
+            <label class="block text-xs text-slate-400 mb-1">Buscar (SKU / Nombre)</label>
+            <input id="filter-search" data-testid="filter-search" type="text" placeholder="Ej. LAP-001 o Monitor"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Categoría</label>
+            <select id="filter-category" data-testid="filter-category"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white">
+              <option value="">Todas</option>
+              <option value="electronica">Electrónica</option>
+              <option value="oficina">Oficina</option>
+              <option value="herramientas">Herramientas</option>
+              <option value="insumos">Insumos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Precio Mín.</label>
+            <input id="filter-min-price" data-testid="filter-min-price" type="number" step="0.01" min="0"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Precio Máx.</label>
+            <input id="filter-max-price" data-testid="filter-max-price" type="number" step="0.01" min="0"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white" />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+              <input id="filter-low-stock" data-testid="filter-low-stock" type="checkbox"
+                class="rounded bg-slate-800 border-slate-700 text-indigo-500" />
+              Bajo stock
+            </label>
+            <button id="filter-apply-btn" data-testid="filter-apply-btn" type="button"
+              class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-semibold text-white">
+              Filtrar
+            </button>
+            <button id="filter-reset-btn" data-testid="filter-reset-btn" type="button"
+              class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700">
+              Limpiar
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabla de Productos -->
+      <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm" data-testid="products-table">
+            <thead class="bg-slate-800/70 text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-3">SKU</th>
+                <th class="px-4 py-3">Nombre</th>
+                <th class="px-4 py-3">Categoría</th>
+                <th class="px-4 py-3">Precio</th>
+                <th class="px-4 py-3">Stock</th>
+                <th class="px-4 py-3">Estado</th>
+                <th class="px-4 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="products-tbody" data-testid="products-tbody" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Historial de Órdenes -->
+      <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-800">
+          <h2 class="text-base font-semibold text-white">Últimos Movimientos / Órdenes</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm" data-testid="orders-table">
+            <thead class="bg-slate-800/70 text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-3">ID</th>
+                <th class="px-4 py-3">Tipo</th>
+                <th class="px-4 py-3">Producto</th>
+                <th class="px-4 py-3">Cantidad</th>
+                <th class="px-4 py-3">Subtotal</th>
+                <th class="px-4 py-3">Descuento</th>
+                <th class="px-4 py-3">IVA (16%)</th>
+                <th class="px-4 py-3">Total</th>
+              </tr>
+            </thead>
+            <tbody id="orders-tbody" data-testid="orders-tbody" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL PRODUCTO ==================== -->
+  <div id="product-modal" data-testid="product-modal"
+    class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4">
+      <h3 id="product-modal-title" class="text-lg font-bold text-white">Nuevo Producto</h3>
+      <div id="product-modal-error" data-testid="product-modal-error"
+        class="hidden p-3 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-sm"></div>
+      <form id="product-form" class="space-y-3">
+        <input type="hidden" id="product-edit-id" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">SKU</label>
+            <input id="product-sku" data-testid="product-sku" type="text" required placeholder="ELEC-001"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Categoría</label>
+            <select id="product-category" data-testid="product-category"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm">
+              <option value="electronica">Electrónica</option>
+              <option value="oficina">Oficina</option>
+              <option value="herramientas">Herramientas</option>
+              <option value="insumos">Insumos</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Nombre</label>
+          <input id="product-name" data-testid="product-name" type="text" required placeholder="Laptop Pro 14"
+            class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Descripción</label>
+          <input id="product-description" data-testid="product-description" type="text"
+            class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Precio</label>
+            <input id="product-price" data-testid="product-price" type="number" step="0.01" required
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Stock</label>
+            <input id="product-stock" data-testid="product-stock" type="number" required value="0"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Stock Mínimo</label>
+            <input id="product-min-stock" data-testid="product-min-stock" type="number" required value="5"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-slate-300">
+          <input id="product-active" data-testid="product-active" type="checkbox" checked />
+          Producto activo
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="product-cancel" data-testid="product-cancel" type="button"
+            class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm text-slate-300">
+            Cancelar
+          </button>
+          <button data-testid="product-submit" type="submit"
+            class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL MOVIMIENTO / ORDEN ==================== -->
+  <div id="order-modal" data-testid="order-modal"
+    class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-4">
+      <h3 class="text-lg font-bold text-white">Registrar Movimiento de Inventario</h3>
+      <div id="order-modal-error" data-testid="order-modal-error"
+        class="hidden p-3 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-sm"></div>
+      <form id="order-form" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Producto</label>
+          <select id="order-product-select" data-testid="order-product-select" required
+            class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Tipo</label>
+            <select id="order-type" data-testid="order-type"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm">
+              <option value="entrada">Entrada (+)</option>
+              <option value="salida">Salida (-)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Cantidad</label>
+            <input id="order-quantity" data-testid="order-quantity" type="number" min="1" required value="1"
+              class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Notas</label>
+          <input id="order-notes" data-testid="order-notes" type="text" placeholder="Motivo del movimiento"
+            class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="order-cancel" data-testid="order-cancel" type="button"
+            class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm text-slate-300">
+            Cancelar
+          </button>
+          <button data-testid="order-submit" type="submit"
+            class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white">
+            Confirmar Movimiento
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+services:
+  inventario-erp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventario-erp
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - sqlite_data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/inventario.db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-production-key-change-me}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-120}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-inventario-erp}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:5080/api/default}
+      - OTEL_EXPORTER_OTLP_HEADERS=${OTEL_EXPORTER_OTLP_HEADERS:-Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=}
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  infra-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: infra-monitor
+    restart: unless-stopped
+    command: ["python", "infra_monitor.py"]
+    pid: "host"
+    environment:
+      - OTEL_SERVICE_NAME=${OTEL_INFRA_SERVICE_NAME:-inventario-erp-infra}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:5080/api/default}
+      - OTEL_EXPORTER_OTLP_HEADERS=${OTEL_EXPORTER_OTLP_HEADERS:-Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=}
+      - INFRA_SCRAPE_INTERVAL=${INFRA_SCRAPE_INTERVAL:-10}
+      - HOST_LABEL=${HOST_LABEL:-ec2-inventario-prod}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      inventario-erp:
+        condition: service_healthy
+
+volumes:
+  sqlite_data:
+    driver: local
