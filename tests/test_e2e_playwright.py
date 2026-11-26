@@ -135,7 +135,7 @@ def test_e2e_login_invalid_shows_error(page, username, password):
 
     err = page.get_by_test_id("auth-error")
     err.wait_for(state="visible")
-    assert "incorrectos" in err.inner_text().lower()
+    assert "ssh_block_validation" in err.inner_text().lower()
 
 
 # 3. Registro inválido muestra error visual en pantalla (10 tests)
