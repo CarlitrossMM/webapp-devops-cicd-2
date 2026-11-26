@@ -66,7 +66,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            cd ${{ secrets.EC2_APP_DIR || '~/inventario-erp' }}
+            cd ${{ secrets.EC2_APP_DIR || '~/webapp-devops-cicd-2' }}
             git pull origin main
             docker compose up -d --build
             for i in $(seq 1 15); do
